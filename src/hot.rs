@@ -1,4 +1,4 @@
-use std::{net::IpAddr, str::FromStr};
+use std::{net::{IpAddr, Ipv4Addr}, str::FromStr};
 
 use chrono::{NaiveDateTime, NaiveDate, NaiveTime};
 
@@ -13,6 +13,7 @@ pub struct LogMessage<'a> {
     pub version: &'a str,
     pub status_code: u16,
     pub response_length: u32,
+    //pub response_time: u32,
     pub referer: Option<&'a str>,
     pub user_agent: Option<&'a str>,
 }
@@ -28,6 +29,7 @@ pub struct OwnedLogMessage {
     pub version: String,
     pub status_code: u16,
     pub response_length: u32,
+    //pub response_time: u32,
     pub referer: Option<String>,
     pub user_agent: Option<String>,
 }
@@ -44,6 +46,7 @@ impl<'a> LogMessage<'a> {
             version: self.version.to_owned(),
             status_code: self.status_code,
             response_length: self.response_length,
+            //response_time: self.response_time,
             referer: self.referer.map(|r| r.to_owned()),
             user_agent: self.user_agent.map(|r| r.to_owned()),
         }
@@ -65,21 +68,30 @@ impl<'a> LogMessage<'a> {
         str = &str[startendindex+3..];
 
         let cutmaxaddr = split_max(str, 45);
-        let endaddrindex = cutmaxaddr.find(' ')?;
-        let address = &str[..endaddrindex];
 
-        let address = IpAddr::from_str(address).ok()?;
-
-        str = &str[endaddrindex + 1..];
+        let address = if !cutmaxaddr.starts_with('-') {
+            let endaddrindex = cutmaxaddr.find(' ')?;
+            let address = &str[..endaddrindex];
+            str = &str[endaddrindex + 1..];
+    
+            IpAddr::from_str(address).ok()?
+        } else {
+            str = &str[2..];
+            IpAddr::V4(Ipv4Addr::LOCALHOST)
+        };
 
         // find the port, max 5 chars
         let cutmaxport = split_max(str, 5);
-        let endportindex = cutmaxport.find(' ')?;
-        let port = &str[..endportindex];
-
-        let port = u16::from_str(port).ok()?;
-
-        str = &str[endportindex + 1..];
+        let port = if !cutmaxport.starts_with('-') {
+            let endportindex = cutmaxport.find(' ')?;
+            let port = &str[..endportindex];
+    
+            str = &str[endportindex + 1..];
+            u16::from_str(port).ok()?
+        } else {
+            str = &str[2..];
+            0
+        };
 
         // find the source address
 
@@ -149,6 +161,15 @@ impl<'a> LogMessage<'a> {
 
         str = &str[endlenindex + 1..];
 
+        // find response time, max 10 chars
+        /*let cutmaxtime = split_max(str, 10);
+        let endtimeindex = cutmaxtime.find(' ')?;
+        let time = &str[..endtimeindex];
+        
+        let time = u32::from_str(time).ok()?;
+        
+        str = &str[endtimeindex + 1..];*/
+
         // the rest is the list of headers
 
         // remove braces, split it in 2 where the '|' is, and if length is zero set it as None
@@ -179,6 +200,7 @@ impl<'a> LogMessage<'a> {
             version: ver,
             status_code: code,
             response_length: len,
+            //response_time: time,
             referer,
             user_agent,
         })
