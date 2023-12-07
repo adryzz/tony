@@ -156,7 +156,7 @@ impl<'a> LogMessage<'a> {
         let mut referer = None;
         let mut user_agent = None;
         if str.len() > 3 {
-            str = &str[1..str.len()-1];
+            str = &str[1..str.len()-2];
             let separator_index = str.find('|')?;
             let left = &str[..separator_index];
             let right = &str[separator_index+1..];
