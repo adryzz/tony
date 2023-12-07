@@ -131,10 +131,24 @@ impl<'a> LogMessage<'a> {
 
         // find path, any length, capped at 300 chars, may be changed
         let cutmaxpath = split_max(str, 300);
-        let endpathindex = cutmaxpath.find(' ')?;
-        let path = &str[..endpathindex];
 
-        str = &str[endpathindex + 1..];
+        // find the start of the query parameters (if any) and split there
+        let path = if let Some(idx) = cutmaxpath.find('?') {
+            let path = &str[..idx];
+            str = &str[idx + 1..];
+
+            // if query parameters take more than 400 chars then fail ig
+            let cutmaxquery = split_max(str, 400);
+            let endqueryindex = cutmaxquery.find(' ')?;
+            str = &str[endqueryindex + 1..];
+            path
+        } else {
+            let endpathindex = cutmaxpath.find(' ')?;
+            let path = &str[..endpathindex];
+            str = &str[endpathindex + 1..];
+
+            path
+        };
 
         // find HTTP version, max 9 chars
         let cutmaxver = split_max(str, 9);
